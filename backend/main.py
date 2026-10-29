@@ -9,6 +9,8 @@ from backend import db
 from backend.auth import TOKENS, verify_password, issue_token
 from backend.simulator import simulator
 from backend.explain import explain
+from backend.firewall import settings as firewall_settings, block_ip as add_firewall_block, unblock_ip as remove_firewall_block
+from backend.live_monitor import live_monitor
 
 ROOT=Path(__file__).resolve().parents[1]
 app=FastAPI(title="SOC Triage Demo",version="1.0")
@@ -17,7 +19,10 @@ app.add_middleware(CORSMiddleware,allow_origins=["*"],allow_methods=["*"],allow_
 @app.on_event("startup")
 def startup():
     db.init_db()
-    simulator.start()
+    if firewall_settings()["mode"] == "live":
+        live_monitor.start()
+    else:
+        simulator.start()
 
 def current_user(authorization: Optional[str]=Header(default=None)):
     if not authorization or not authorization.lower().startswith("bearer "): raise HTTPException(401,"Please log in")
@@ -55,9 +60,41 @@ def alert_detail(alert_id:int,user=Depends(current_user)):
 def alert_action(alert_id:int,body:ActionBody,user=Depends(current_user)):
     alert=db.get_alert(alert_id)
     if not alert:raise HTTPException(404,"Alert not found")
-    mapping={"investigate":("Investigating","Investigation started (simulated)"),"block_ip":("Contained",f"Blocked {alert['src_ip']} (simulated)"),
+    mapping={"investigate":("Investigating","Investigation started (simulated)"),
       "isolate_host":("Contained",f"Isolated {alert['dst_ip']} (simulated)"),"false_positive":("False Positive","Marked as false positive"),
       "escalate":("Escalated","Escalated for senior review"),"close":("Closed","Case closed")}
+    cfg = firewall_settings()
+    if body.action == "block_ip":
+        if cfg["mode"] == "live" and not cfg["real_blocking_enabled"]:
+            raise HTTPException(409,"Real blocking is disabled. Set ENABLE_REAL_BLOCKING=true and restart the app as Administrator.")
+        if cfg["mode"] == "live":
+            if alert.get("source") != "windows-firewall-log":
+                raise HTTPException(409,"Only alerts created from live Windows Firewall logs can be blocked in live mode.")
+            user_row = db.rows("SELECT role FROM users WHERE username=?", (user,))
+            if not user_row or user_row[0]["role"] != "admin":
+                raise HTTPException(403,"Sign in with the admin account to add real Windows Firewall rules.")
+            try:
+                group = add_firewall_block(alert["src_ip"], alert_id)
+            except (ValueError, RuntimeError, OSError) as exc:
+                db.add_history(alert_id,"block_ip_failed",user,str(exc)[:400])
+                raise HTTPException(503,f"Windows Firewall rule was not added: {exc}")
+            mapping["block_ip"]=("Contained",f"Blocked {alert['src_ip']} in Windows Firewall (inbound and outbound rule group: {group})")
+        else:
+            mapping["block_ip"]=("Contained",f"Blocked {alert['src_ip']} (simulated)")
+    if body.action == "unblock_ip":
+        if cfg["mode"] != "live" or not cfg["real_blocking_enabled"]:
+            raise HTTPException(409,"Unblocking requires live mode and ENABLE_REAL_BLOCKING=true.")
+        if alert.get("source") != "windows-firewall-log":
+            raise HTTPException(409,"Only live Windows Firewall alerts have removable firewall rules.")
+        user_row = db.rows("SELECT role FROM users WHERE username=?", (user,))
+        if not user_row or user_row[0]["role"] != "admin":
+            raise HTTPException(403,"Sign in with the admin account to remove Windows Firewall rules.")
+        try:
+            group = remove_firewall_block(alert_id)
+        except (RuntimeError, OSError) as exc:
+            db.add_history(alert_id,"unblock_ip_failed",user,str(exc)[:400])
+            raise HTTPException(503,f"Windows Firewall rule was not removed: {exc}")
+        mapping["unblock_ip"]=("Investigating",f"Removed Windows Firewall block rules for {alert['src_ip']} ({group})")
     if body.action not in mapping:raise HTTPException(400,"Unknown action")
     status,detail=mapping[body.action]
     if body.note.strip():detail += ". Note: "+body.note.strip()[:400]
@@ -74,6 +111,8 @@ def alert_explain(alert_id:int,user=Depends(current_user)):
 
 @app.post("/simulate/burst")
 def burst(body:BurstBody,user=Depends(current_user)):
+    if firewall_settings()["mode"] == "live":
+        raise HTTPException(409,"Dataset burst simulation is unavailable in live mode.")
     try: ids=simulator.burst_attack(body.attack_type,body.n)
     except ValueError as exc:raise HTTPException(400,str(exc))
     return {"created":len(ids),"alert_ids":ids,"simulated":True}
@@ -85,5 +124,12 @@ def stats(user=Depends(current_user)):
     by_status={x["status"]:x["n"] for x in db.rows("SELECT status,count(*) n FROM alerts GROUP BY status")}
     times=db.rows("SELECT (julianday(first_action)-julianday(created_at))*86400 seconds FROM alerts a JOIN (SELECT alert_id,min(created_at) first_action FROM history_events WHERE action!='detected' GROUP BY alert_id) h ON a.id=h.alert_id")
     return {"by_band":by_band,"by_type":by_type,"by_status":by_status,"mean_time_to_first_action_seconds":round(sum(x["seconds"] for x in times)/len(times),2) if times else None}
+
+@app.get("/config")
+def config(user=Depends(current_user)):
+    cfg = firewall_settings()
+    user_row = db.rows("SELECT role FROM users WHERE username=?", (user,))
+    return {**cfg, "role": user_row[0]["role"] if user_row else "analyst",
+            "real_blocking_available": cfg["mode"] == "live" and cfg["real_blocking_enabled"]}
 
 app.mount("/",StaticFiles(directory=ROOT/"frontend",html=True),name="frontend")

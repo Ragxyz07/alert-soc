@@ -1,6 +1,7 @@
 """Simple risk score for analyst triage."""
 SEVERITY = {"BENIGN": 0.15, "WebAttack": 0.65, "PortScan": 0.58,
-            "BruteForce": 0.82, "DoS": 0.9}
+            "BruteForce": 0.82, "DoS": 0.9, "Repeated Connection Attempts": 0.72,
+            "Blocked Firewall Traffic": 0.68}
 
 def risk_score(confidence, attack_type, anomaly_score):
     """Combine confidence, class severity, and normalized anomaly (each 0..1)."""

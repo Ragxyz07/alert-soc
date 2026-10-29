@@ -16,23 +16,30 @@ def init_db():
         db.executescript("""
         CREATE TABLE IF NOT EXISTS alerts(id INTEGER PRIMARY KEY, created_at TEXT NOT NULL, src_ip TEXT, dst_ip TEXT,
           src_port INTEGER, dst_port INTEGER, protocol TEXT, attack_type TEXT, confidence REAL, anomaly_score REAL,
-          risk_score INTEGER, risk_band TEXT, status TEXT DEFAULT 'New', assigned_to TEXT, top_features_json TEXT);
+          risk_score INTEGER, risk_band TEXT, status TEXT DEFAULT 'New', assigned_to TEXT, top_features_json TEXT,
+          source TEXT DEFAULT 'simulation');
         CREATE TABLE IF NOT EXISTS history_events(id INTEGER PRIMARY KEY, alert_id INTEGER REFERENCES alerts(id), action TEXT,
           performed_by TEXT, details TEXT, created_at TEXT);
         CREATE TABLE IF NOT EXISTS explanations(alert_id INTEGER PRIMARY KEY REFERENCES alerts(id), text TEXT, source TEXT, created_at TEXT);
         CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY, username TEXT UNIQUE, password_hash TEXT, role TEXT);
         """)
+        alert_columns = {row[1] for row in db.execute("PRAGMA table_info(alerts)")}
+        if "source" not in alert_columns:
+            db.execute("ALTER TABLE alerts ADD COLUMN source TEXT DEFAULT 'simulation'")
         for username, password, role in [("analyst", "analyst123", "analyst"), ("admin", "admin123", "admin")]:
             db.execute("INSERT OR IGNORE INTO users(username,password_hash,role) VALUES(?,?,?)", (username, hash_password(password), role))
 
 def add_alert(alert):
     with connect() as db:
         cur = db.execute("""INSERT INTO alerts(created_at,src_ip,dst_ip,src_port,dst_port,protocol,attack_type,confidence,
-          anomaly_score,risk_score,risk_band,status,assigned_to,top_features_json) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+          anomaly_score,risk_score,risk_band,status,assigned_to,top_features_json,source) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
           (now(), alert.get("src_ip"), alert.get("dst_ip"), alert.get("src_port"), alert.get("dst_port"), alert.get("protocol"),
-           alert["attack_type"], alert["confidence"], alert["anomaly_score"], alert["risk_score"], alert["risk_band"], "New", None,
-           json.dumps(alert.get("top_features", []))))
-        aid = cur.lastrowid; add_history(aid, "detected", "simulator", f"Detected {alert['attack_type']} traffic (simulated)", db=db)
+           alert["attack_type"], alert["confidence"], alert["anomaly_score"], alert["risk_score"], alert["risk_band"], alert.get("status", "New"), None,
+           json.dumps(alert.get("top_features", [])), alert.get("source", "simulation")))
+        aid = cur.lastrowid
+        source = alert.get("source", "simulation")
+        detail = alert.get("source_detail", f"Detected {alert['attack_type']} traffic (simulated)")
+        add_history(aid, "detected", source, detail, db=db)
         return aid
 
 def add_history(alert_id, action, user, details, db=None):

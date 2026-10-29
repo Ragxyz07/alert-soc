@@ -55,6 +55,31 @@ The trainer prints the actual CSV headers and source label counts. It merges CIC
 
 Risk is a weighted demo score: 35% classifier confidence, 40% attack severity, and 25% normalized anomaly. Bands are Critical (80+), High (60–79), Medium (40–59), and Low (under 40). It is a triage aid, not a production security decision.
 
+## Optional live Windows mode
+
+The default remains dataset simulation. To use events from this Windows PC, configure Windows Defender Firewall logging first. In an elevated PowerShell window, enable allowed and dropped connection logs:
+
+```powershell
+netsh advfirewall set allprofiles logging allowedconnections enable
+netsh advfirewall set allprofiles logging droppedconnections enable
+```
+
+Windows documents the default file as `%windir%\system32\logfiles\firewall\pfirewall.log`; logging must be enabled for events to appear. See Microsoft's [firewall logging guide](https://learn.microsoft.com/en-us/windows/security/operating-system-security/network-security/windows-firewall/configure-logging).
+
+Copy `.env.example` to `.env`, then enable live monitoring:
+
+```dotenv
+SOC_MODE=live
+WINDOWS_FIREWALL_LOG=C:\Windows\System32\LogFiles\Firewall\pfirewall.log
+ENABLE_REAL_BLOCKING=true
+```
+
+Restart `run.bat` from an Administrator PowerShell window and sign in with `admin` / `admin123` for firewall rule controls. Live mode tails new firewall log entries, groups repeated contacts by remote IP and service port, and raises heuristic alerts after repeated allowed/blocked events. Windows firewall logs don't contain the CIC flow features, so live alerts use these transparent repeat-count signals instead of the trained Random Forest. The monitor skips old entries present when it starts.
+
+For a live alert, **Block IP** asks for confirmation and then adds inbound and outbound Windows Defender Firewall rules for that single remote address. It applies to all matching traffic on this PC. **Remove firewall block** removes the rules created for that alert. The app refuses real blocking when running in dataset mode, when the alert isn't from the live log, for special-purpose addresses, or when Windows rejects the operation. The server process needs administrator rights; keep `ENABLE_REAL_BLOCKING=false` to use read-only live monitoring. Microsoft documents the [New-NetFirewallRule](https://learn.microsoft.com/en-us/powershell/module/netsecurity/new-netfirewallrule) command and its `-RemoteAddress` behavior.
+
+Returning to the default demo only requires removing `SOC_MODE=live` or setting it to `simulation`, then restarting the server. The app never enables Windows logging or adds a firewall rule without your explicit setup and button confirmation.
+
 ## Smoke check
 
 Run `python tests/smoke_test.py`. It trains a smaller model from the local dataset, then checks login, alert listing/filtering, case details, simulated burst, action, explanation, history, static dashboard, and statistics through the API test client.
