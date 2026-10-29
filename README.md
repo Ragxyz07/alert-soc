@@ -30,7 +30,7 @@ python -m pip install -r requirements.txt
 python ml/train.py
 ```
 
-On Windows, start with `run.bat`; on macOS/Linux, run `sh run.sh`. The server listens on http://127.0.0.1:8000. Open `/login.html` if the dashboard does not redirect automatically. The first server start creates `backend/soc.db` and seeds the demo users.
+On Windows PowerShell, start with `.\run.bat` from the project folder (the `.` prefix tells PowerShell to run the script in the current folder). In Command Prompt, use `run.bat`; on macOS/Linux, run `sh run.sh`. The server listens on http://127.0.0.1:8000. Open `/login.html` if the dashboard does not redirect automatically. The first server start creates `backend/soc.db` and seeds the demo users.
 
 Optional LLM explanations: copy `.env.example` to `.env`, set `LLM_API_KEY`, and adjust `LLM_MODEL` and `LLM_BASE_URL` for an OpenAI-compatible chat-completions provider. Explanations are generated only after clicking the button. If the key is absent or the provider is unavailable, a local explanation template is used.
 
