@@ -1,0 +1,9 @@
+.env
+__pycache__/
+*.py[cod]
+*.joblib
+*.db
+data/*
+!data/.gitkeep
+.venv/
+.pytest_cache/

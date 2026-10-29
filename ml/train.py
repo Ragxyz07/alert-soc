@@ -88,8 +88,13 @@ def train():
     }
     benign = xtr.loc[ytr == "BENIGN"]
     anomaly = IsolationForest(n_estimators=100, contamination="auto", n_jobs=-1, random_state=42).fit(benign)
+    # A small balanced set of original rows powers fast demo replay at server startup.
+    labeled = X.assign(Label=y)
+    replay = pd.concat([group.sample(min(len(group), 1000), random_state=17)
+                        for _, group in labeled.groupby("Label")], ignore_index=True)
     model = {"classifier": clf, "anomaly": anomaly, "features": list(X.columns), "labels": labels,
-             "benign_median": benign.median().to_dict(), "benign_scale": benign.std().replace(0, 1).fillna(1).to_dict()}
+             "benign_median": benign.median().to_dict(), "benign_scale": benign.std().replace(0, 1).fillna(1).to_dict(),
+             "replay_rows": replay}
     dump(model, OUT / "model.joblib")
     (OUT / "metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
     print(f"Accuracy: {metrics['accuracy']:.4f}")
