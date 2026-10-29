@@ -1,6 +1,8 @@
 const API = '';
 const token = () => localStorage.getItem('soc_token');
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const seenAlertIds = new Set();
+let dashboardFirstPaint = true;
 
 async function api(path, options = {}) {
   const headers = {...(options.headers || {})};
@@ -54,14 +56,21 @@ function drawBars(canvas, entries, color) {
   const list = entries.slice(0, 6), max = Math.max(1, ...list.map(item => item[1]));
   const left = 95, right = 28, top = 8, gap = 27;
   ctx.font = '10px DM Sans';
-  list.forEach(([name, value], index) => {
-    const y = top + index * gap;
-    ctx.fillStyle = '#bdcce2'; ctx.textAlign = 'right';
-    ctx.fillText(name.length > 15 ? name.slice(0,14) + '…' : name, left - 10, y + 11);
-    ctx.fillStyle = 'rgba(190,214,255,.10)'; ctx.fillRect(left, y, width-left-right, 12);
-    ctx.fillStyle = color; const bar = (width-left-right) * value / max; ctx.fillRect(left, y, bar, 12);
-    ctx.fillStyle = '#d7e6fa'; ctx.textAlign = 'left'; ctx.fillText(value, left + bar + 6, y + 11);
-  });
+  let progress = 0;
+  function paint() {
+    ctx.clearRect(0, 0, width, height);
+    list.forEach(([name, value], index) => {
+      const y = top + index * gap;
+      ctx.fillStyle = '#bdcce2'; ctx.textAlign = 'right';
+      ctx.fillText(name.length > 15 ? name.slice(0,14) + '…' : name, left - 10, y + 11);
+      ctx.fillStyle = 'rgba(190,214,255,.10)'; ctx.fillRect(left, y, width-left-right, 12);
+      ctx.fillStyle = color; const full = (width-left-right) * value / max, bar = full * progress; ctx.fillRect(left, y, bar, 12);
+      if (progress >= 1) { ctx.fillStyle = '#d7e6fa'; ctx.textAlign = 'left'; ctx.fillText(value, left + bar + 6, y + 11); }
+    });
+    progress = Math.min(1, progress + .12);
+    if (progress < 1) requestAnimationFrame(paint);
+  }
+  requestAnimationFrame(paint);
 }
 
 async function loadDashboard() {
@@ -79,17 +88,21 @@ async function loadDashboard() {
       const ink = ['#bb3c4a','#b96b2a','#a47a20','#29836e'];
       const icons = ['⬆','◆','◈','✓'];
       document.querySelector('#summary').innerHTML = bands.map((band, i) =>
-        `<article class="summary-card"><div><div class="label">${band} risk</div><div class="number">${stats.by_band[band]||0}</div></div><div class="sum-icon" style="color:${ink[i]};background:${colors[i]}">${icons[i]}</div></article>`).join('');
+        `<article class="summary-card ${dashboardFirstPaint?'intro':''}" style="--card-index:${i}"><div><div class="label">${band} risk</div><div class="number">${stats.by_band[band]||0}</div></div><div class="sum-icon" style="color:${ink[i]};background:${colors[i]}">${icons[i]}</div></article>`).join('');
 
       let filtered = alerts;
       const risk = document.querySelector('#risk-filter').value, status = document.querySelector('#status-filter').value;
       if (risk) filtered = filtered.filter(alert => alert.risk_band === risk);
       if (status) filtered = filtered.filter(alert => alert.status === status);
-      document.querySelector('#alert-rows').innerHTML = filtered.map(alert =>
-        `<tr><td><a class="alert-id" href="/alert.html?id=${alert.id}">ALT-${String(alert.id).padStart(5,'0')}</a></td><td class="attack">${esc(alert.attack_type)}</td><td>${esc(alert.src_ip)}:${alert.src_port} → ${esc(alert.dst_ip)}:${alert.dst_port}</td><td class="confidence">${Math.round(alert.confidence*100)}%</td><td><span class="badge ${bandClass(alert.risk_band)}">${alert.risk_score} · ${esc(alert.risk_band)}</span></td><td><span class="badge status">${esc(alert.status)}</span></td><td>${fmtDate(alert.created_at)}</td></tr>`).join('');
+      document.querySelector('#alert-rows').innerHTML = filtered.map((alert, index) => {
+        const arrived = !seenAlertIds.has(alert.id);
+        seenAlertIds.add(alert.id);
+        return `<tr class="alert-row ${arrived?'arrive':''}" style="animation-delay:${Math.min(index,9)*38}ms"><td><a class="alert-id" href="/alert.html?id=${alert.id}">ALT-${String(alert.id).padStart(5,'0')}</a></td><td class="attack">${esc(alert.attack_type)}</td><td>${esc(alert.src_ip)}:${alert.src_port} → ${esc(alert.dst_ip)}:${alert.dst_port}</td><td class="confidence">${Math.round(alert.confidence*100)}%</td><td><span class="badge ${bandClass(alert.risk_band)}">${alert.risk_score} · ${esc(alert.risk_band)}</span></td><td><span class="badge status">${esc(alert.status)}</span></td><td>${fmtDate(alert.created_at)}</td></tr>`;
+      }).join('');
       document.querySelector('#empty-state').classList.toggle('hidden', filtered.length > 0);
       drawBars(document.querySelector('#type-chart'), Object.entries(stats.by_type||{}).sort((a,b)=>b[1]-a[1]), '#80dfff');
       drawBars(document.querySelector('#band-chart'), bands.map(band=>[band,stats.by_band[band]||0]), '#71e1c5');
+      dashboardFirstPaint = false;
     } catch (error) { console.error(error); }
   }
   document.querySelector('#risk-filter').onchange = refresh;

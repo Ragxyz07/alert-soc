@@ -89,3 +89,34 @@ a.alert-id{color:#83dfff}a.alert-id:hover{color:#c1f3ff}
 footer{color:#788ba9}
 #empty-state{color:#a1b0c7}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;scroll-behavior:auto!important}}
+
+/* Motion: quick entrances, quiet ambient drift, and clear interaction feedback. */
+@keyframes glass-enter{from{opacity:0;transform:translateY(14px) scale(.99)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes row-enter{0%{opacity:0;transform:translateY(9px);background:rgba(119,220,255,.12)}60%{background:rgba(119,220,255,.075)}100%{opacity:1;transform:translateY(0);background:transparent}}
+@keyframes orb-drift{0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(24px,-20px,0) scale(1.08)}}
+@keyframes status-breathe{0%,100%{box-shadow:0 0 0 4px rgba(86,225,193,.12),0 0 10px rgba(86,225,193,.45)}50%{box-shadow:0 0 0 6px rgba(86,225,193,.07),0 0 19px rgba(86,225,193,.8)}}
+@keyframes timeline-enter{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:translateX(0)}}
+body::before{animation:orb-drift 18s ease-in-out infinite}
+body::after{animation:orb-drift 23s ease-in-out infinite reverse}
+.page-heading{animation:glass-enter .62s cubic-bezier(.2,.75,.25,1) both}
+.summary-card.intro{animation:glass-enter .58s cubic-bezier(.2,.75,.25,1) both;animation-delay:calc(var(--card-index,0)*75ms)}
+.charts-grid>.panel{animation:glass-enter .68s cubic-bezier(.2,.75,.25,1) both}
+.charts-grid>.panel:nth-child(2){animation-delay:100ms}
+.container>section.panel{animation:glass-enter .72s cubic-bezier(.2,.75,.25,1) both;animation-delay:160ms}
+.summary-card,.panel,.login-card{position:relative}
+.summary-card::after,.panel::after,.login-card::after{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(112deg,transparent 15%,rgba(220,244,255,.065) 42%,transparent 66%);
+  transform:translateX(-120%);transition:transform .85s cubic-bezier(.2,.7,.2,1)
+}
+.summary-card:hover::after,.panel:hover::after,.login-card:hover::after{transform:translateX(120%)}
+.primary,.action-btn,.quiet{transition:transform .18s ease,box-shadow .2s ease,background .2s ease,color .2s ease,border-color .2s ease}
+.primary:active,.action-btn:active{transform:translateY(1px) scale(.985)}
+.primary:focus-visible,.action-btn:focus-visible,.quiet:focus-visible,a:focus-visible,select:focus-visible{outline:2px solid #9beaff;outline-offset:3px}
+#alert-rows .alert-row.arrive{animation:row-enter .85s ease both;animation-delay:0ms}
+.live i{animation:status-breathe 2.4s ease-in-out infinite}
+.timeline .event{animation:timeline-enter .42s ease both}
+.timeline .event:nth-child(2){animation-delay:55ms}.timeline .event:nth-child(3){animation-delay:100ms}.timeline .event:nth-child(4){animation-delay:145ms}.timeline .event:nth-child(5){animation-delay:190ms}
+.login-card{animation:glass-enter .65s cubic-bezier(.2,.75,.25,1) both}
+@media(prefers-reduced-motion:reduce){body::before,body::after,.live i{animation:none!important}.page-heading,.summary-card.intro,.charts-grid>.panel,.container>section.panel,.login-card,#alert-rows .alert-row.arrive,.timeline .event{animation:none!important}.summary-card,.primary,.action-btn,.quiet,.summary-card::after,.panel::after,.login-card::after{transition:none!important}}
+.case-head{animation:glass-enter .55s cubic-bezier(.2,.75,.25,1) both}.case-layout>div>.panel,.case-layout>section.panel{animation:glass-enter .6s cubic-bezier(.2,.75,.25,1) both}.case-layout>div>.panel:nth-child(2){animation-delay:70ms}.case-layout>div>.panel:nth-child(3){animation-delay:130ms}@media(prefers-reduced-motion:reduce){.case-head,.case-layout>div>.panel,.case-layout>section.panel{animation:none!important}}
