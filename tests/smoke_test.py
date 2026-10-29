@@ -17,7 +17,18 @@ env.pop("LLM_API_KEY", None)
 
 if os.getenv("SOC_SKIP_TRAIN") != "1":
     print("Training a small model for the smoke check...", flush=True)
-    subprocess.run([sys.executable, "ml/train.py"], env=env, check=True)
+    model_path = ROOT / "ml" / "model.joblib"
+    metrics_path = ROOT / "ml" / "metrics.json"
+    saved_model = model_path.read_bytes() if model_path.exists() else None
+    saved_metrics = metrics_path.read_bytes() if metrics_path.exists() else None
+    try:
+        subprocess.run([sys.executable, "ml/train.py"], env=env, check=True)
+    finally:
+        # Keep a user's normal trained model and metrics intact after the tiny test run.
+        if saved_model is not None:
+            model_path.write_bytes(saved_model)
+        if saved_metrics is not None:
+            metrics_path.write_bytes(saved_metrics)
 
 from backend import db
 
