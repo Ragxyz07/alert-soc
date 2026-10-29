@@ -1,0 +1,143 @@
+{
+  "accuracy": 0.9925763393673432,
+  "per_class": {
+    "BENIGN": {
+      "precision": 0.9990950226244344,
+      "recall": 0.9989886623729174,
+      "f1": 0.9990418396678378,
+      "support": 18787
+    },
+    "BruteForce": {
+      "precision": 0.9886621315192744,
+      "recall": 0.9203166226912929,
+      "f1": 0.9532659196501776,
+      "support": 1895
+    },
+    "DoS": {
+      "precision": 0.9972067039106145,
+      "recall": 0.9974388824214202,
+      "f1": 0.9973227796531253,
+      "support": 4295
+    },
+    "PortScan": {
+      "precision": 0.996875,
+      "recall": 1.0,
+      "f1": 0.9984350547730829,
+      "support": 2233
+    },
+    "WebAttack": {
+      "precision": 0.4346153846153846,
+      "recall": 0.837037037037037,
+      "f1": 0.5721518987341773,
+      "support": 135
+    }
+  },
+  "confusion_matrix": [
+    [
+      18768,
+      1,
+      11,
+      7,
+      0
+    ],
+    [
+      4,
+      1744,
+      1,
+      0,
+      146
+    ],
+    [
+      10,
+      0,
+      4284,
+      0,
+      1
+    ],
+    [
+      0,
+      0,
+      0,
+      2233,
+      0
+    ],
+    [
+      3,
+      19,
+      0,
+      0,
+      113
+    ]
+  ],
+  "labels": [
+    "BENIGN",
+    "BruteForce",
+    "DoS",
+    "PortScan",
+    "WebAttack"
+  ],
+  "raw_label_counts": {
+    "DDoS": 128027,
+    "BENIGN": 2273097,
+    "PortScan": 158930,
+    "Bot": 1966,
+    "Infiltration": 36,
+    "Web Attack \u00ef\u00bf\u00bd Brute Force": 1507,
+    "Web Attack \u00ef\u00bf\u00bd XSS": 652,
+    "Web Attack \u00ef\u00bf\u00bd Sql Injection": 21,
+    "FTP-Patator": 7938,
+    "SSH-Patator": 5897,
+    "DoS Hulk": 231073,
+    "DoS slowloris": 5796,
+    "DoS Slowhttptest": 5499,
+    "DoS GoldenEye": 10293,
+    "Heartbleed": 11
+  },
+  "training_rows": 109376,
+  "test_rows": 27345,
+  "classification_report": {
+    "BENIGN": {
+      "precision": 0.9990950226244344,
+      "recall": 0.9989886623729174,
+      "f1-score": 0.9990418396678378,
+      "support": 18787.0
+    },
+    "BruteForce": {
+      "precision": 0.9886621315192744,
+      "recall": 0.9203166226912929,
+      "f1-score": 0.9532659196501776,
+      "support": 1895.0
+    },
+    "DoS": {
+      "precision": 0.9972067039106145,
+      "recall": 0.9974388824214202,
+      "f1-score": 0.9973227796531253,
+      "support": 4295.0
+    },
+    "PortScan": {
+      "precision": 0.996875,
+      "recall": 1.0,
+      "f1-score": 0.9984350547730829,
+      "support": 2233.0
+    },
+    "WebAttack": {
+      "precision": 0.4346153846153846,
+      "recall": 0.837037037037037,
+      "f1-score": 0.5721518987341773,
+      "support": 135.0
+    },
+    "accuracy": 0.9925763393673432,
+    "macro avg": {
+      "precision": 0.8832908485339417,
+      "recall": 0.9507562409045335,
+      "f1-score": 0.9040434984956802,
+      "support": 27345.0
+    },
+    "weighted avg": {
+      "precision": 0.9951073569023016,
+      "recall": 0.9925763393673432,
+      "f1-score": 0.9934425043636621,
+      "support": 27345.0
+    }
+  }
+}
