@@ -56,11 +56,11 @@ function drawBars(canvas, entries, color) {
   ctx.font = '10px DM Sans';
   list.forEach(([name, value], index) => {
     const y = top + index * gap;
-    ctx.fillStyle = '#66758a'; ctx.textAlign = 'right';
+    ctx.fillStyle = '#bdcce2'; ctx.textAlign = 'right';
     ctx.fillText(name.length > 15 ? name.slice(0,14) + '…' : name, left - 10, y + 11);
-    ctx.fillStyle = '#f0f3f7'; ctx.fillRect(left, y, width-left-right, 12);
+    ctx.fillStyle = 'rgba(190,214,255,.10)'; ctx.fillRect(left, y, width-left-right, 12);
     ctx.fillStyle = color; const bar = (width-left-right) * value / max; ctx.fillRect(left, y, bar, 12);
-    ctx.fillStyle = '#718096'; ctx.textAlign = 'left'; ctx.fillText(value, left + bar + 6, y + 11);
+    ctx.fillStyle = '#d7e6fa'; ctx.textAlign = 'left'; ctx.fillText(value, left + bar + 6, y + 11);
   });
 }
 
@@ -88,8 +88,8 @@ async function loadDashboard() {
       document.querySelector('#alert-rows').innerHTML = filtered.map(alert =>
         `<tr><td><a class="alert-id" href="/alert.html?id=${alert.id}">ALT-${String(alert.id).padStart(5,'0')}</a></td><td class="attack">${esc(alert.attack_type)}</td><td>${esc(alert.src_ip)}:${alert.src_port} → ${esc(alert.dst_ip)}:${alert.dst_port}</td><td class="confidence">${Math.round(alert.confidence*100)}%</td><td><span class="badge ${bandClass(alert.risk_band)}">${alert.risk_score} · ${esc(alert.risk_band)}</span></td><td><span class="badge status">${esc(alert.status)}</span></td><td>${fmtDate(alert.created_at)}</td></tr>`).join('');
       document.querySelector('#empty-state').classList.toggle('hidden', filtered.length > 0);
-      drawBars(document.querySelector('#type-chart'), Object.entries(stats.by_type||{}).sort((a,b)=>b[1]-a[1]), '#5378d8');
-      drawBars(document.querySelector('#band-chart'), bands.map(band=>[band,stats.by_band[band]||0]), '#1a9b7d');
+      drawBars(document.querySelector('#type-chart'), Object.entries(stats.by_type||{}).sort((a,b)=>b[1]-a[1]), '#80dfff');
+      drawBars(document.querySelector('#band-chart'), bands.map(band=>[band,stats.by_band[band]||0]), '#71e1c5');
     } catch (error) { console.error(error); }
   }
   document.querySelector('#risk-filter').onchange = refresh;
