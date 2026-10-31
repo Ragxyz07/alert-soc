@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from backend import db
 from backend.auth import TOKENS, verify_password, issue_token
 from backend.simulator import simulator
+from backend.organization import ORGANIZATION, SCENARIOS, recent_events, run_drill
 from backend.explain import explain
 from backend.firewall import settings as firewall_settings, block_ip as add_firewall_block, unblock_ip as remove_firewall_block
 from backend.live_monitor import live_monitor
@@ -21,8 +22,6 @@ def startup():
     db.init_db()
     if firewall_settings()["mode"] == "live":
         live_monitor.start()
-    else:
-        simulator.start()
 
 def current_user(authorization: Optional[str]=Header(default=None)):
     if not authorization or not authorization.lower().startswith("bearer "): raise HTTPException(401,"Please log in")
@@ -33,6 +32,7 @@ def current_user(authorization: Optional[str]=Header(default=None)):
 class LoginBody(BaseModel): username:str; password:str
 class ActionBody(BaseModel): action:str; note:str=""
 class BurstBody(BaseModel): attack_type:str="DoS"; n:int=5
+class OrganizationDrillBody(BaseModel): scenario:str
 
 @app.post("/login")
 def login(body:LoginBody):
@@ -116,6 +116,20 @@ def burst(body:BurstBody,user=Depends(current_user)):
     try: ids=simulator.burst_attack(body.attack_type,body.n)
     except ValueError as exc:raise HTTPException(400,str(exc))
     return {"created":len(ids),"alert_ids":ids,"simulated":True}
+
+@app.get("/organization")
+def organization(user=Depends(current_user)):
+    return {**ORGANIZATION,
+            "scenarios":[{"id":key,"label":value["label"],"summary":value["summary"]} for key,value in SCENARIOS.items()],
+            "recent_events":recent_events(40)}
+
+@app.post("/organization/drill")
+def organization_drill(body:OrganizationDrillBody,user=Depends(current_user)):
+    try:
+        result=run_drill(body.scenario)
+    except ValueError as exc:
+        raise HTTPException(400,str(exc))
+    return {**result,"simulated":True,"organization":ORGANIZATION["name"]}
 
 @app.get("/stats")
 def stats(user=Depends(current_user)):

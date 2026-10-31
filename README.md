@@ -1,36 +1,36 @@
 # Sentinel SOC Triage Demo
 
-A student-sized security operations demo showing the flow **Detect → Classify → Dashboard → Act → Track**. It uses CIC-IDS2017 network-flow rows, a Random Forest for attack classification, an Isolation Forest trained on BENIGN flows, SQLite for cases and history, and a plain HTML/CSS/JavaScript dashboard.
+A student SOC dashboard built around **Northstar Manufacturing**, a fictional organization with a small corporate and industrial network inventory. Safe drills create synthetic security events, correlate them into cases, and keep an audit trail in SQLite. Nothing connects to or sends traffic to real devices.
+
+An optional CIC-IDS2017 classifier is included for dataset experiments. The default organization drills do not need the dataset or a trained model.
 
 ## Architecture
 
 ```text
-CIC-IDS2017 CSVs
+Choose a fictional organization drill
       │
-      ├── ml/train.py ── Random Forest + BENIGN Isolation Forest
-      │                         │
-      └──────────────── backend/simulator.py (replay / burst)
-                                │
-                       risk score → SQLite
-                                │
-        browser ← FastAPI (login, alerts, action, explain, stats)
-                                │
-                   history timeline + dashboard
+      ├── synthetic events → local security event log
+      └── correlate events → alert case + analyst history
+                                      │
+          browser ← FastAPI + SQLite ←─┘
+
+Optional dataset experiment: CIC-IDS2017 → Random Forest + Isolation Forest
 ```
 
 ## Setup
 
-Use Python 3.10 or newer. Keep the supplied CSV files under `data/` (the provided `data/MachineLearningCSV/MachineLearningCVE/` works).
+Use Python 3.10 or newer. The organization dashboard works without the CIC dataset. To train the optional dataset classifier, place CIC CSV files under `data/` first.
 
 ```bash
 python -m venv .venv
 # Windows PowerShell: .venv\Scripts\Activate.ps1
 # macOS/Linux: source .venv/bin/activate
 python -m pip install -r requirements.txt
-python ml/train.py
 ```
 
 On Windows PowerShell, start with `.\run.bat` from the project folder (the `.` prefix tells PowerShell to run the script in the current folder). In Command Prompt, use `run.bat`; on macOS/Linux, run `sh run.sh`. The server listens on http://127.0.0.1:8000. Open `/login.html` if the dashboard does not redirect automatically. The first server start creates `backend/soc.db` and seeds the demo users.
+
+Organization drills work without the optional model or dataset. To train the optional dataset classifier, keep CIC CSV files under `data/` and run `python ml/train.py` manually. The dataset is excluded from Git because of its size.
 
 Optional LLM explanations: copy `.env.example` to `.env`, set `LLM_API_KEY`, and adjust `LLM_MODEL` and `LLM_BASE_URL` for an OpenAI-compatible chat-completions provider. Explanations are generated only after clicking the button. If the key is absent or the provider is unavailable, a local explanation template is used.
 
@@ -43,11 +43,11 @@ These are demo credentials. Change them before any use beyond a local classroom 
 
 ## Five-minute demo
 
-1. Sign in as `analyst` and point out the risk summary, charts, filters, and live dataset replay.
-2. Click **Simulate attack**, choose `DoS`, and show the new alert at the top of the queue.
-3. Open the case. Explain the classifier confidence, anomaly signal, risk band, and top contributing flow features.
+1. Sign in as `analyst` and introduce the fictional Northstar Manufacturing network inventory.
+2. Choose a scenario such as **OT protocol probe** and click **Run drill**. It creates synthetic event records and a linked alert.
+3. Show the organization event log and open the linked case to review the detection signals and asset context.
 4. Click **Explain this alert**. The no-key fallback still gives a junior analyst next steps; with a configured provider the on-demand explanation is cached.
-5. Add a short note and choose **Investigate** or **Block IP**. Confirm the dialog, then show the changed status and timeline entry. Emphasize that the action is logged only and never touches a firewall or host.
+5. Add a note and choose a response action. In the fictional organization, actions update the case log only; they do not isolate assets or block traffic.
 
 ## Model and risk details
 
@@ -57,7 +57,7 @@ Risk is a weighted demo score: 35% classifier confidence, 40% attack severity, a
 
 ## Optional live Windows mode
 
-The default remains dataset simulation. To use events from this Windows PC, configure Windows Defender Firewall logging first. In an elevated PowerShell window, enable allowed and dropped connection logs:
+The fictional organization dashboard is the default. To separately use events from this Windows PC, configure Windows Defender Firewall logging first. In an elevated PowerShell window, enable allowed and dropped connection logs:
 
 ```powershell
 netsh advfirewall set allprofiles logging allowedconnections enable
@@ -82,13 +82,14 @@ Returning to the default demo only requires removing `SOC_MODE=live` or setting 
 
 ## Smoke check
 
-Run `python tests/smoke_test.py`. It trains a smaller model from the local dataset, then checks login, alert listing/filtering, case details, simulated burst, action, explanation, history, static dashboard, and statistics through the API test client.
+Run `python tests/smoke_test.py` only after providing the local dataset. The test trains a smaller model, then checks login, alert listing/filtering, case details, simulated burst, action, explanation, history, static dashboard, and statistics through the API test client.
 
 ## Limitations
 
-- This is a classroom demo using a lab dataset, not live enterprise telemetry.
-- IP addresses are generated for display; the flow dataset does not provide the real endpoints used here.
-- Response actions only change SQLite status and history. They never block network traffic, isolate machines, or call a security appliance.
+- The Northstar organization and its security events are fictional, not live enterprise telemetry.
+- Organization response actions are recorded in the local case history only; they do not change the simulated network or real devices.
+- Dataset replay IP addresses are generated for display; the flow dataset does not provide the real endpoints used here.
+- In the default organization mode, response actions only change SQLite status and history. They never block network traffic, isolate machines, or call a security appliance.
 - Classifier quality on a dataset split does not guarantee performance on new environments; CIC labels are merged and rare categories are omitted.
 - LLM output can be wrong. It is optional, advisory, limited to explanation, and never controls scores, status, or response actions.
 - Tokens are in memory and expire when the process restarts; this is not production authentication.

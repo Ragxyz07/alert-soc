@@ -77,12 +77,19 @@ async function loadDashboard() {
   requireLogin(); setupHeader();
   async function refresh() {
     try {
-      const [alerts, stats, config] = await Promise.all([api('/alerts'), api('/stats'), api('/config')]);
+      const [alerts, stats, config, organization] = await Promise.all([api('/alerts'), api('/stats'), api('/config'), api('/organization')]);
       const live = config.mode === 'live';
-      const modeText = live ? (config.live_log_configured ? 'LIVE WINDOWS FIREWALL' : 'LIVE MODE · LOG NOT FOUND') : 'DATASET SIMULATION';
+      const modeText = live ? (config.live_log_configured ? 'LIVE WINDOWS FIREWALL' : 'LIVE MODE · LOG NOT FOUND') : 'DEMO ORGANIZATION';
       document.querySelector('#live-mode-label').innerHTML = `<i></i> ${modeText}`;
-      const simulate = document.querySelector('#simulate');
-      simulate.classList.toggle('hidden', live);
+      document.querySelector('#org-name').textContent = organization.name;
+      document.querySelector('#org-boundary').textContent = `${organization.sector} · ${organization.boundary}`;
+      const assetsRoot = document.querySelector('#org-assets');
+      assetsRoot.innerHTML = organization.assets.map(asset => `<article class="asset-card"><div class="asset-top"><span class="asset-id">${esc(asset.id)}</span><span class="asset-criticality criticality-${asset.criticality.toLowerCase()}">${esc(asset.criticality)}</span></div><strong>${esc(asset.name)}</strong><span class="asset-meta">${esc(asset.ip)} · ${esc(asset.zone)}</span></article>`).join('');
+      const scenarioSelect = document.querySelector('#scenario-select');
+      if (!scenarioSelect.options.length) scenarioSelect.innerHTML = organization.scenarios.map(item => `<option value="${esc(item.id)}">${esc(item.label)}</option>`).join('');
+      const eventRows = document.querySelector('#org-event-rows');
+      eventRows.innerHTML = organization.recent_events.map(event => `<tr><td>${fmtDate(event.created_at)}</td><td><span class="event-type">${esc(event.event_type)}</span><div class="event-detail">${esc(event.details)}</div></td><td><strong>${esc(event.asset_id)}</strong><div class="event-detail">${esc(event.destination_ip)}:${event.destination_port}</div></td><td>${esc(event.source_ip)}</td><td><span class="outcome">${esc(event.outcome)}</span></td><td><a class="alert-id" href="/alert.html?id=${event.alert_id}">ALT-${String(event.alert_id).padStart(5,'0')}</a></td></tr>`).join('');
+      document.querySelector('#org-empty').classList.toggle('hidden', organization.recent_events.length > 0);
       const bands = ['Critical','High','Medium','Low'];
       const colors = ['#fff0f1','#fff4e9','#fff9e5','#e9f7f2'];
       const ink = ['#bb3c4a','#b96b2a','#a47a20','#29836e'];
@@ -107,11 +114,23 @@ async function loadDashboard() {
   }
   document.querySelector('#risk-filter').onchange = refresh;
   document.querySelector('#status-filter').onchange = refresh;
-  document.querySelector('#simulate').onclick = async () => {
-    const kind = prompt('Attack type: DoS, PortScan, BruteForce, or WebAttack', 'DoS');
-    if (!kind) return;
-    try { await api('/simulate/burst', {method:'POST',body:JSON.stringify({attack_type:kind,n:5})}); await refresh(); }
-    catch (error) { alert(error.message); }
+  const drillButton = document.querySelector('#run-drill');
+  drillButton.onclick = async () => {
+    const scenario = document.querySelector('#scenario-select').value;
+    const message = document.querySelector('#drill-message');
+    drillButton.disabled = true;
+    drillButton.textContent = 'Creating demo events…';
+    message.textContent = 'Writing synthetic network activity to the local organization log.';
+    try {
+      const result = await api('/organization/drill', {method:'POST',body:JSON.stringify({scenario})});
+      message.innerHTML = `${esc(result.summary)} Logged ${result.created_events} synthetic events. <a class="alert-id" href="/alert.html?id=${result.alert_id}">Open case ALT-${String(result.alert_id).padStart(5,'0')}</a>`;
+      await refresh();
+    } catch (error) {
+      message.textContent = error.message;
+    } finally {
+      drillButton.disabled = false;
+      drillButton.textContent = '▶ Run drill';
+    }
   };
   await refresh(); setInterval(refresh, 5000);
 }
@@ -129,19 +148,22 @@ async function loadCase() {
   async function refresh() {
     const [alert, config] = await Promise.all([api('/alerts/'+encodeURIComponent(id)), api('/config')]);
     const liveAlert = alert.source === 'windows-firewall-log';
+    const organizationAlert = alert.source === 'organization-simulation';
     const realBlock = config.real_blocking_available && liveAlert && config.role === 'admin';
     const hasRule = alert.history.some(event => event.action === 'block_ip' && event.details.includes('Windows Firewall'));
     const blockLabel = config.mode === 'live' ? (hasRule ? 'Already blocked' : realBlock ? 'Block IP · real' : 'Block IP unavailable') : 'Block IP · simulated';
     const blockDisabled = config.mode === 'live' && (!realBlock || hasRule);
     const actions = [['investigate','Investigate'],['block_ip',blockLabel],['isolate_host','Isolate Host'],['false_positive','False Positive'],['escalate','Escalate'],['close','Close case']];
     if (realBlock && hasRule) actions.splice(2,0,['unblock_ip','Remove firewall block']);
-    const modeLabel = liveAlert ? 'REAL WINDOWS FIREWALL LOG' : 'DATASET SIMULATION';
+    const modeLabel = liveAlert ? 'REAL WINDOWS FIREWALL LOG' : organizationAlert ? 'FICTIONAL ORGANIZATION DRILL' : 'DATASET SIMULATION';
     const responseNote = realBlock
       ? 'Block IP adds inbound and outbound rules to Windows Defender Firewall for this remote IP. This affects the whole PC.'
       : config.mode === 'live'
         ? (!config.live_log_configured ? `Live mode cannot read ${config.log_path}. Enable Windows Firewall logging and restart the app.` : config.real_blocking_enabled && config.role !== 'admin' ? 'Sign in as admin to add or remove real Windows Firewall rules.' : config.real_blocking_enabled ? 'Only live firewall alerts can be blocked. This case is not from the live log.' : 'Live log mode is on. Real blocking is off; enable it and run the app as Administrator to add firewall rules.')
         : 'These actions only update the case log. They do not change network devices.';
-    root.innerHTML = `<div class="case-head"><div><div class="case-id">CASE ALT-${String(alert.id).padStart(5,'0')} · ${fmtDate(alert.created_at)}</div><h1>${esc(alert.attack_type)} alert</h1><p class="muted">${liveAlert?'Observed by the Windows Firewall log monitor':'Classified from the CIC-IDS2017 dataset'}</p></div><span class="badge ${bandClass(alert.risk_band)}">${esc(alert.risk_band)} risk</span></div><div class="case-layout"><div><section class="panel case-panel"><div class="panel-heading"><div><h2>Alert details</h2><p class="muted">${liveAlert?'Live firewall event and repeated-connection signals':'Flow attributes and model signals'}</p></div><span class="sim-label">${modeLabel}</span></div><div class="detail-grid"><div><div class="detail-label">Remote IP</div><div class="detail-value">${esc(alert.src_ip)}:${alert.src_port}</div></div><div><div class="detail-label">Local IP</div><div class="detail-value">${esc(alert.dst_ip)}:${alert.dst_port}</div></div><div><div class="detail-label">Protocol</div><div class="detail-value">${esc(alert.protocol)}</div></div><div><div class="detail-label">${liveAlert ? 'Signal confidence' : 'Classifier confidence'}</div><div class="detail-value">${(alert.confidence*100).toFixed(1)}%</div></div><div><div class="detail-label">Anomaly score</div><div class="detail-value">${Number(alert.anomaly_score).toFixed(3)}</div></div><div><div class="detail-label">Current status</div><div class="detail-value">${esc(alert.status)}</div></div></div><h2 class="section-title">${liveAlert?'Detection signals':'Top contributing features'}</h2><div class="feature-list">${featureMarkup(alert.top_features)}</div></section><section class="panel case-panel"><div class="panel-heading"><div><h2>Plain-English explanation</h2><p class="muted">On-demand analyst guidance · AI output is advisory</p></div><button id="explain" class="primary">✦ Explain this alert</button></div><div id="explanation" class="explain-box">${alert.explanation?esc(alert.explanation.text):'Select “Explain this alert” for a short summary and suggested next steps.'}</div>${alert.explanation?`<p class="muted">Source: ${esc(alert.explanation.source)}</p>`:''}</section><section class="panel case-panel"><h2>Response actions <span class="sim-label">${realBlock?'WINDOWS FIREWALL':'SIMULATED / CONFIGURATION REQUIRED'}</span></h2><p class="muted">${responseNote}</p><textarea id="note" class="note" placeholder="Optional case note…"></textarea><div class="actions">${actions.map(([value,label])=>`<button class="action-btn" data-action="${value}" ${value==='block_ip'&&blockDisabled?'disabled title="Enable real blocking in .env and restart as Administrator"':''}>${label}</button>`).join('')}</div></section></div><section class="panel case-panel"><div class="panel-heading"><div><h2>Case timeline</h2><p class="muted">Investigation history</p></div><span class="badge status">${esc(alert.status)}</span></div><div class="timeline">${alert.history.map(event=>`<div class="event"><div class="event-title">${esc(event.action)} <span class="muted">by ${esc(event.performed_by)}</span></div><div class="event-detail">${esc(event.details)}</div><div class="event-time">${fmtDate(event.created_at)}</div></div>`).join('')}</div></section></div>`;
+    const sourceDescription = liveAlert ? 'Observed by the Windows Firewall log monitor' : organizationAlert ? 'Synthetic activity in the Northstar Manufacturing demo network' : 'Classified from the CIC-IDS2017 dataset';
+    const detailDescription = liveAlert ? 'Live firewall event and repeated-connection signals' : organizationAlert ? 'Synthetic event correlation and asset context' : 'Flow attributes and model signals';
+    root.innerHTML = `<div class="case-head"><div><div class="case-id">CASE ALT-${String(alert.id).padStart(5,'0')} · ${fmtDate(alert.created_at)}</div><h1>${esc(alert.attack_type)} alert</h1><p class="muted">${sourceDescription}</p></div><span class="badge ${bandClass(alert.risk_band)}">${esc(alert.risk_band)} risk</span></div><div class="case-layout"><div><section class="panel case-panel"><div class="panel-heading"><div><h2>Alert details</h2><p class="muted">${detailDescription}</p></div><span class="sim-label">${modeLabel}</span></div><div class="detail-grid"><div><div class="detail-label">Remote IP</div><div class="detail-value">${esc(alert.src_ip)}:${alert.src_port}</div></div><div><div class="detail-label">Local IP</div><div class="detail-value">${esc(alert.dst_ip)}:${alert.dst_port}</div></div><div><div class="detail-label">Protocol</div><div class="detail-value">${esc(alert.protocol)}</div></div><div><div class="detail-label">${liveAlert||organizationAlert ? 'Signal confidence' : 'Classifier confidence'}</div><div class="detail-value">${(alert.confidence*100).toFixed(1)}%</div></div><div><div class="detail-label">Anomaly score</div><div class="detail-value">${Number(alert.anomaly_score).toFixed(3)}</div></div><div><div class="detail-label">Current status</div><div class="detail-value">${esc(alert.status)}</div></div></div><h2 class="section-title">${liveAlert||organizationAlert?'Detection signals':'Top contributing features'}</h2><div class="feature-list">${featureMarkup(alert.top_features)}</div></section><section class="panel case-panel"><div class="panel-heading"><div><h2>Plain-English explanation</h2><p class="muted">On-demand analyst guidance · AI output is advisory</p></div><button id="explain" class="primary">✦ Explain this alert</button></div><div id="explanation" class="explain-box">${alert.explanation?esc(alert.explanation.text):'Select “Explain this alert” for a short summary and suggested next steps.'}</div>${alert.explanation?`<p class="muted">Source: ${esc(alert.explanation.source)}</p>`:''}</section><section class="panel case-panel"><h2>Response actions <span class="sim-label">${realBlock?'WINDOWS FIREWALL':'SIMULATED / CONFIGURATION REQUIRED'}</span></h2><p class="muted">${responseNote}</p><textarea id="note" class="note" placeholder="Optional case note…"></textarea><div class="actions">${actions.map(([value,label])=>`<button class="action-btn" data-action="${value}" ${value==='block_ip'&&blockDisabled?'disabled title="Enable real blocking in .env and restart as Administrator"':''}>${label}</button>`).join('')}</div></section></div><section class="panel case-panel"><div class="panel-heading"><div><h2>Case timeline</h2><p class="muted">Investigation history</p></div><span class="badge status">${esc(alert.status)}</span></div><div class="timeline">${alert.history.map(event=>`<div class="event"><div class="event-title">${esc(event.action)} <span class="muted">by ${esc(event.performed_by)}</span></div><div class="event-detail">${esc(event.details)}</div><div class="event-time">${fmtDate(event.created_at)}</div></div>`).join('')}</div></section></div>`;
 
     document.querySelector('#explain').onclick = async () => {
       const box = document.querySelector('#explanation'); box.textContent = 'Preparing explanation…';

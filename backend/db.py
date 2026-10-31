@@ -22,6 +22,9 @@ def init_db():
           performed_by TEXT, details TEXT, created_at TEXT);
         CREATE TABLE IF NOT EXISTS explanations(alert_id INTEGER PRIMARY KEY REFERENCES alerts(id), text TEXT, source TEXT, created_at TEXT);
         CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY, username TEXT UNIQUE, password_hash TEXT, role TEXT);
+        CREATE TABLE IF NOT EXISTS security_events(id INTEGER PRIMARY KEY, created_at TEXT NOT NULL, event_type TEXT NOT NULL,
+          severity TEXT NOT NULL, source_ip TEXT, destination_ip TEXT, destination_port INTEGER, asset_id TEXT,
+          outcome TEXT, details TEXT, alert_id INTEGER REFERENCES alerts(id));
         """)
         alert_columns = {row[1] for row in db.execute("PRAGMA table_info(alerts)")}
         if "source" not in alert_columns:
@@ -47,6 +50,14 @@ def add_history(alert_id, action, user, details, db=None):
         db.execute("INSERT INTO history_events(alert_id,action,performed_by,details,created_at) VALUES(?,?,?,?,?)", (alert_id, action, user, details, now()))
     else:
         with connect() as conn: add_history(alert_id, action, user, details, conn)
+
+def add_security_events(events):
+    with connect() as conn:
+        conn.executemany("""INSERT INTO security_events(created_at,event_type,severity,source_ip,destination_ip,destination_port,
+          asset_id,outcome,details,alert_id) VALUES(?,?,?,?,?,?,?,?,?,?)""",
+          [(now(), event["event_type"], event["severity"], event["source_ip"], event["destination_ip"],
+            event["destination_port"], event["asset_id"], event["outcome"], event["details"], event.get("alert_id"))
+           for event in events])
 
 def rows(sql, params=()):
     with connect() as db: return [dict(r) for r in db.execute(sql, params).fetchall()]

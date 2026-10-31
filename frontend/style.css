@@ -120,3 +120,23 @@ body::after{animation:orb-drift 23s ease-in-out infinite reverse}
 .login-card{animation:glass-enter .65s cubic-bezier(.2,.75,.25,1) both}
 @media(prefers-reduced-motion:reduce){body::before,body::after,.live i{animation:none!important}.page-heading,.summary-card.intro,.charts-grid>.panel,.container>section.panel,.login-card,#alert-rows .alert-row.arrive,.timeline .event{animation:none!important}.summary-card,.primary,.action-btn,.quiet,.summary-card::after,.panel::after,.login-card::after{transition:none!important}}
 .case-head{animation:glass-enter .55s cubic-bezier(.2,.75,.25,1) both}.case-layout>div>.panel,.case-layout>section.panel{animation:glass-enter .6s cubic-bezier(.2,.75,.25,1) both}.case-layout>div>.panel:nth-child(2){animation-delay:70ms}.case-layout>div>.panel:nth-child(3){animation-delay:130ms}@media(prefers-reduced-motion:reduce){.case-head,.case-layout>div>.panel,.case-layout>section.panel{animation:none!important}}
+
+/* Fictional organization inventory and synthetic event stream. */
+.org-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(310px,.8fr);gap:15px;margin:14px 0}
+.org-panel{padding:20px}
+.org-panel .panel-heading{margin-bottom:16px}
+.org-panel .eyebrow{margin-bottom:6px}
+.demo-pill{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(123,220,255,.22);border-radius:999px;padding:7px 10px;background:rgba(89,176,226,.09);color:#91e5ff;font-size:9px;font-weight:800;letter-spacing:.08em;white-space:nowrap}
+.demo-pill i{width:6px;height:6px;border-radius:50%;background:#84e5ce;box-shadow:0 0 10px rgba(132,229,206,.7)}
+.asset-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.asset-card{min-width:0;padding:12px;border:1px solid rgba(190,214,255,.12);border-radius:10px;background:rgba(5,13,26,.32);display:grid;gap:7px;transition:transform .18s ease,border-color .18s ease,background .18s ease}
+.asset-card:hover{transform:translateY(-2px);border-color:rgba(119,220,255,.32);background:rgba(48,92,142,.16)}
+.asset-top{display:flex;align-items:center;justify-content:space-between;gap:7px}.asset-id{font-size:9px;letter-spacing:.06em;color:#83dfff;font-weight:800}
+.asset-criticality{font-size:8px;text-transform:uppercase;letter-spacing:.06em;font-weight:800}.criticality-critical{color:#ff9eb2}.criticality-high{color:#ffc28f}.criticality-medium{color:#8be4c8}
+.asset-card strong{font-size:11px;color:#e8f1ff}.asset-meta{font-size:9px;color:#91a3c0;overflow-wrap:anywhere}
+.drill-heading{margin-bottom:20px!important}.drill-controls{display:flex;gap:9px;align-items:center}.drill-controls select{min-width:0;flex:1}.drill-controls .primary{white-space:nowrap}.drill-message{min-height:34px;margin:13px 0 0;color:#a9bad4;font-size:10px;line-height:1.55}.drill-message a{white-space:nowrap}
+.event-panel{padding:0}.event-panel .table-heading{padding:20px 21px 13px}.event-panel .table-wrap{max-height:350px;overflow:auto}.event-panel table{min-width:760px}.event-panel th{position:sticky;top:0;background:rgba(13,23,41,.97);z-index:1}.event-panel td{vertical-align:top}.event-type{font-size:10px;color:#e8f1ff;font-weight:700}.event-detail{max-width:250px;white-space:normal;line-height:1.45}.event-panel td .event-detail{margin-top:4px}.outcome{display:inline-block;border:1px solid rgba(147,190,240,.14);border-radius:20px;padding:4px 8px;background:rgba(148,183,228,.08);color:#c4d8f5;font-size:9px;font-weight:700}
+.event-panel .empty{padding:20px}.event-panel .empty.hidden{display:none}
+@media(max-width:900px){.org-grid{grid-template-columns:1fr}.asset-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:540px){.page-heading{flex-direction:column}.demo-pill{align-self:flex-start}.asset-grid{grid-template-columns:1fr}.drill-controls{align-items:stretch;flex-direction:column}.drill-controls .primary{width:100%}.org-panel{padding:16px}.event-panel{padding:0}}
+@media(prefers-reduced-motion:reduce){.asset-card{transition:none!important}.asset-card:hover{transform:none}}
