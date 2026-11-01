@@ -115,6 +115,10 @@ function AssetCard({ asset, delay }) {
   </article>;
 }
 
+function EmptyState({ children }) {
+  return <div className="grid min-h-28 place-items-center px-4 text-center text-[11px] text-muted">{children}</div>;
+}
+
 function Dashboard() {
   const authenticated = useRequireLogin();
   const [data, setData] = useState({ alerts: [], stats: null, config: { mode: 'simulation' }, organization: null });
