@@ -32,6 +32,8 @@ On Windows PowerShell, start with `.\run.bat` from the project folder (the `.` p
 
 Organization drills work without the optional model or dataset. To train the optional dataset classifier, keep CIC CSV files under `data/` and run `python ml/train.py` manually. The dataset is excluded from Git because of its size.
 
+The interface is built with React, Tailwind CSS, and Recharts; the compiled frontend is included in the repository, so Node.js is not needed to run the college demo. To rebuild frontend changes, run `npm ci` and `npm run build` from `frontend/`.
+
 Optional LLM explanations: copy `.env.example` to `.env`, set `LLM_API_KEY`, and adjust `LLM_MODEL` and `LLM_BASE_URL` for an OpenAI-compatible chat-completions provider. Explanations are generated only after clicking the button. If the key is absent or the provider is unavailable, a local explanation template is used.
 
 ## Demo accounts

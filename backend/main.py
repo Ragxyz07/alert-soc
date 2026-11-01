@@ -146,4 +146,4 @@ def config(user=Depends(current_user)):
     return {**cfg, "role": user_row[0]["role"] if user_row else "analyst",
             "real_blocking_available": cfg["mode"] == "live" and cfg["real_blocking_enabled"]}
 
-app.mount("/",StaticFiles(directory=ROOT/"frontend",html=True),name="frontend")
+app.mount("/",StaticFiles(directory=ROOT/"frontend"/"dist",html=True),name="frontend")
